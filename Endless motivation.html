@@ -21,9 +21,8 @@
         }
 
         /* 
-           5Hz Calculation: 
-           1 second / 5 cycles = 0.2 seconds per cycle. 
-           Class added via JS after the first screen.
+           5Hz Flicker Logic
+           Active only after the first screen
         */
         .flicker-active {
             animation: pulse 0.2s infinite;
@@ -127,7 +126,7 @@
 </head>
 <body>
 
-    <!-- DISCLAIMER PHASE (Replaces static screens) -->
+    <!-- DISCLAIMER PHASE -->
     <div id="screen-disclaimer" class="container">
         <h1>Things to Know</h1>
         <p id="disc-text" class="disclaimer-text"></p>
@@ -165,7 +164,7 @@
 
     <!-- RESULT PHASE -->
     <div id="screen-result" class="container hidden">
-        <h1 id="final-text"></h1>
+        <h1 id="final-text">...</h1>
     </div>
 
     <!-- EXIT PHASE -->
@@ -173,7 +172,6 @@
         <h1>Better luck next time</h1>
     </div>
 
-    <!-- PERSISTENT FOOTER -->
     <footer>
         Copyright malachihooper.json 2025 All Rights Reserved
     </footer>
@@ -192,7 +190,7 @@
         ];
 
         // --- Configuration ---
-        const transitionTime = 20000; // Time spent on ball screen
+        const transitionTime = 20000; 
 
         // --- State ---
         let currentStep = 0;
@@ -209,7 +207,6 @@
         const btnYesNo = document.getElementById('btn-yesno');
 
         // --- Initialization ---
-        // Load first disclaimer on start
         window.onload = () => {
             updateDisclaimerView();
         };
@@ -217,14 +214,14 @@
         function updateDisclaimerView() {
             discText.innerText = disclaimers[currentStep];
 
-            // Safety Logic: Only blink after the first screen
+            // 5Hz Strobe Activation (Safety Logic: Off for screen 1)
             if (currentStep > 0) {
                 document.body.classList.add('flicker-active');
             } else {
                 document.body.classList.remove('flicker-active');
             }
 
-            // Button Logic: Show Yes/No on the final step
+            // Button Logic
             if (currentStep === disclaimers.length - 1) {
                 btnNext.classList.add('hidden');
                 btnYesNo.classList.remove('hidden');
@@ -279,7 +276,6 @@
                 ballX += velX;
                 ballY += velY;
 
-                // Bounce
                 if (ballX <= 0 || ballX >= maxX) velX *= -1;
                 if (ballY <= 0 || ballY >= maxY) velY *= -1;
 
@@ -301,14 +297,24 @@
             sConfirmation.classList.remove('hidden');
         }
 
-        function finish(choice) {
+        // --- Serverless Function Integration ---
+        async function finish(choice) {
             sConfirmation.classList.add('hidden');
             sResult.classList.remove('hidden');
 
-            if (choice === 'accept') {
-                finalText.innerText = "Granted";
-            } else {
-                finalText.innerText = "Come back next time";
+            try {
+                // Call the API
+                const response = await fetch(`/api/decide?choice=${choice}`);
+                const data = await response.json();
+                finalText.innerText = data.message;
+            } catch (error) {
+                // Fallback for local testing (No API)
+                console.log("Offline mode");
+                if (choice === 'accept') {
+                    finalText.innerText = "Granted";
+                } else {
+                    finalText.innerText = "Come back next time";
+                }
             }
         }
     </script>
