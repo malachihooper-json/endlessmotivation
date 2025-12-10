@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endless Motivation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        /* 
+           5Hz Calculation: 
+           1 second / 5 cycles = 0.2 seconds per cycle. 
+           Class added via JS after the first screen.
+        */
+        .flicker-active {
+            animation: pulse 0.2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.85; } 
+            100% { opacity: 1; }
+        }
+
+        .container {
+            max-width: 700px;
+            padding: 20px;
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        button {
+            background-color: transparent;
+            border: 2px solid white;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.3s, transform 0.1s;
+            margin: 10px;
+        }
+
+        button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Ball Animation Styles */
+        #ball-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            background: black;
+        }
+        
+        #ball-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            font-size: 1.5rem;
+            z-index: 12;
+            width: 100%;
+        }
+
+        #the-ball {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: white;
+            border-radius: 50%;
+            z-index: 11;
+        }
+
+        h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
+        
+        .disclaimer-text { 
+            font-size: 1.2rem; 
+            line-height: 1.5; 
+            margin-bottom: 2rem; 
+            max-width: 600px;
+        }
+
+        .choice-btn {
+            min-width: 100px;
+        }
+
+        /* Persistent Footer */
+        footer {
+            width: 100%;
+            padding: 10px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-top: auto;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- DISCLAIMER PHASE (Replaces static screens) -->
+    <div id="screen-disclaimer" class="container">
+        <h1>Things to Know</h1>
+        <p id="disc-text" class="disclaimer-text"></p>
+        
+        <!-- Navigation Buttons -->
+        <button id="btn-next" onclick="nextDisclaimer()">Next</button>
+        
+        <div id="btn-yesno" class="hidden">
+            <button class="choice-btn" onclick="handleProceed(true)">YES</button>
+            <button class="choice-btn" onclick="handleProceed(false)">NO</button>
+        </div>
+    </div>
+
+    <!-- INDUCTION PHASE (BALL) -->
+    <div id="screen-induction" class="hidden">
+        <div id="ball-container">
+            <div id="ball-text" class="flicker-active">Follow the ball with your eyes.</div>
+            <div id="the-ball" class="flicker-active"></div>
+        </div>
+    </div>
+
+    <!-- BUTTON PHASE -->
+    <div id="screen-button" class="container hidden">
+        <button onclick="triggerMotivation()">Press this button for endless motivation</button>
+    </div>
+
+    <!-- CONFIRMATION PHASE -->
+    <div id="screen-confirmation" class="container hidden">
+        <h1>You now have endless motivation</h1>
+        <div style="margin-top: 30px;">
+            <button class="choice-btn" onclick="finish('accept')">Accept</button>
+            <button class="choice-btn" onclick="finish('deny')">Deny</button>
+        </div>
+    </div>
+
+    <!-- RESULT PHASE -->
+    <div id="screen-result" class="container hidden">
+        <h1 id="final-text"></h1>
+    </div>
+
+    <!-- EXIT PHASE -->
+    <div id="screen-exit" class="container hidden">
+        <h1>Better luck next time</h1>
+    </div>
+
+    <!-- PERSISTENT FOOTER -->
+    <footer>
+        Copyright malachihooper.json 2025 All Rights Reserved
+    </footer>
+
+    <script>
+        // --- Data ---
+        const disclaimers = [
+            "1. Please do not proceed if you are pregnant, experience seizures, intoxicated, or have narcolepsy.",
+            "2. The program will not work if you are distracted.",
+            "3. The program will not work correctly if you do not relax your body.",
+            "4. The program will not work if you are in a chaotic environment.",
+            "5. The program will not work if you are currently eating or drinking.",
+            "6. The program will not work if you have been interrupted. If you have been interrupted, please start again.",
+            "7. This program can change lives, but it does not work for everyone.",
+            "8. Are you ready to proceed?"
+        ];
+
+        // --- Configuration ---
+        const transitionTime = 20000; // Time spent on ball screen
+
+        // --- State ---
+        let currentStep = 0;
+        const sDisclaimer = document.getElementById('screen-disclaimer');
+        const sInduction = document.getElementById('screen-induction');
+        const sButton = document.getElementById('screen-button');
+        const sConfirmation = document.getElementById('screen-confirmation');
+        const sResult = document.getElementById('screen-result');
+        const sExit = document.getElementById('screen-exit');
+        const finalText = document.getElementById('final-text');
+        
+        const discText = document.getElementById('disc-text');
+        const btnNext = document.getElementById('btn-next');
+        const btnYesNo = document.getElementById('btn-yesno');
+
+        // --- Initialization ---
+        // Load first disclaimer on start
+        window.onload = () => {
+            updateDisclaimerView();
+        };
+
+        function updateDisclaimerView() {
+            discText.innerText = disclaimers[currentStep];
+
+            // Safety Logic: Only blink after the first screen
+            if (currentStep > 0) {
+                document.body.classList.add('flicker-active');
+            } else {
+                document.body.classList.remove('flicker-active');
+            }
+
+            // Button Logic: Show Yes/No on the final step
+            if (currentStep === disclaimers.length - 1) {
+                btnNext.classList.add('hidden');
+                btnYesNo.classList.remove('hidden');
+            } else {
+                btnNext.classList.remove('hidden');
+                btnYesNo.classList.add('hidden');
+            }
+        }
+
+        function nextDisclaimer() {
+            if (currentStep < disclaimers.length - 1) {
+                currentStep++;
+                updateDisclaimerView();
+            }
+        }
+
+        function handleProceed(isReady) {
+            sDisclaimer.classList.add('hidden');
+            if (isReady) {
+                startInduction();
+            } else {
+                sExit.classList.remove('hidden');
+            }
+        }
+
+        // --- Induction (Ball) Logic ---
+        let ballX = 50;
+        let ballY = 50;
+        let velX = 5; 
+        let velY = 4;
+        const ball = document.getElementById('the-ball');
+        let animationFrameId;
+
+        function startInduction() {
+            sInduction.classList.remove('hidden');
+            animateBall();
+            setTimeout(() => {
+                stopInduction();
+            }, transitionTime);
+        }
+
+        function animateBall() {
+            function update() {
+                if(sInduction.classList.contains('hidden')) {
+                    cancelAnimationFrame(animationFrameId);
+                    return;
+                }
+
+                const maxX = window.innerWidth - 50;
+                const maxY = window.innerHeight - 50;
+
+                ballX += velX;
+                ballY += velY;
+
+                // Bounce
+                if (ballX <= 0 || ballX >= maxX) velX *= -1;
+                if (ballY <= 0 || ballY >= maxY) velY *= -1;
+
+                ball.style.left = ballX + 'px';
+                ball.style.top = ballY + 'px';
+
+                animationFrameId = requestAnimationFrame(update);
+            }
+            update();
+        }
+
+        function stopInduction() {
+            sInduction.classList.add('hidden');
+            sButton.classList.remove('hidden');
+        }
+
+        function triggerMotivation() {
+            sButton.classList.add('hidden');
+            sConfirmation.classList.remove('hidden');
+        }
+
+        function finish(choice) {
+            sConfirmation.classList.add('hidden');
+            sResult.classList.remove('hidden');
+
+            if (choice === 'accept') {
+                finalText.innerText = "Granted";
+            } else {
+                finalText.innerText = "Come back next time";
+            }
+        }
+    </script>
+</body>
+</html>
